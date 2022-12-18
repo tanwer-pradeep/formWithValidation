@@ -89,7 +89,7 @@ const RegistrationForm = () => {
       message.success(response.data.message);
       window.localStorage.setItem("isUserAuthenticated", true)
       setTimeout(() => window.location.pathname = '/listing', 500)
-    } else message.error(response.data.message);
+    } else message.error(response?.data.message);
   };
 
   const validateMessages = {

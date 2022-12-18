@@ -25,6 +25,7 @@ const Listing = () => {
 
   const handlePageChange = (selectedPage) => {
     getListing(selectedPage, 10);
+    setCurrentPage(selectedPage)
   };
   const handleLogout = () =>{
     localStorage.removeItem('isUserAuthenticated')
