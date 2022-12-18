@@ -2,19 +2,23 @@ import React, { useState } from "react";
 
 // const {  Button, Form, Input, InputNumber  } = antd;
 import { Button, Form, Input, message } from "antd";
-import { detailValidationApi, userRegistrationApi } from "./util/axios";
+import {
+  detailValidationApi,
+  userLoginApi,
+  userRegistrationApi
+} from "./util/axios";
 
 const layout = {
   labelCol: {
-    span: 8,
+    span: 4,
   },
   wrapperCol: {
-    span: 24,
+    span: 16,
   },
 };
 
 const RegistrationForm = () => {
-const [form] = Form.useForm()
+  const [form] = Form.useForm();
   const [isRegistering, setIsRegistering] = useState(true);
 
   const switching = () => {
@@ -23,31 +27,37 @@ const [form] = Form.useForm()
 
   const onFinish = async (values) => {
     const responseFormMail = await detailValidationApi(
-        "email",
-        `emailId=${values.email}`
-      );
+      "email",
+      `emailId=${values.email}`
+    );
+    if (responseFormMail?.status === 200 && responseFormMail?.data.failed) {
+      message.warning(responseFormMail?.data.message);
+      return;
+    }
     const responseForPhone = await detailValidationApi(
-        "phone",
-        `contactNo=${values.phoneNumber}`
-      );
-      if (responseFormMail?.status === 200 && responseFormMail?.data.failed) {
-        message.warning(responseFormMail?.data.message);
-        return 
-      }
-      if (responseForPhone?.status === 200 && responseForPhone?.data.failed) {
-        message.warning(responseForPhone?.data.message);
-        return 
-      }
-      const registrationResponse = await userRegistrationApi(values);
-      console.log(registrationResponse, 'kkkk')
-      if(registrationResponse?.data?.message){
-        message.success(registrationResponse?.data.message);
-        form.resetFields()
-      }
+      "phone",
+      `contactNo=${values.phoneNumber}`
+    );
+    if (responseForPhone?.status === 200 && responseForPhone?.data.failed) {
+      message.warning(responseForPhone?.data.message);
+      return;
+    }
 
-  };
-  const onFinishFailed = (errorInfo) => {
-    console.log('Failed:', errorInfo);
+    const registrationResponse = await userRegistrationApi(values);
+    if (
+      registrationResponse.status === 200 &&
+      registrationResponse?.data?.message
+    ) {
+      message.success(registrationResponse?.data.message);
+      form.resetFields();
+      return;
+    } else if (
+      registrationResponse.status === 400 &&
+      registrationResponse?.data?.Message
+    ) {
+      message.error(registrationResponse?.data.Message);
+      return;
+    }
   };
 
   const checkEmail = async (event) => {
@@ -73,6 +83,15 @@ const [form] = Form.useForm()
     }
   };
 
+  const onUserLoginFinish = async (details) => {
+    const response = await userLoginApi(details);
+    if (response?.data?.data && response.data.message) {
+      message.success(response.data.message);
+      window.localStorage.setItem("isUserAuthenticated", true)
+      setTimeout(() => window.location.pathname = '/listing', 500)
+    } else message.error(response.data.message);
+  };
+
   const validateMessages = {
     required: "${label} is required!",
     types: {
@@ -81,11 +100,10 @@ const [form] = Form.useForm()
     },
   };
 
-
   if (isRegistering) {
     return (
       <Form
-      form={form}
+        form={form}
         {...layout}
         name="registration-form"
         onFinish={onFinish}
@@ -103,14 +121,14 @@ const [form] = Form.useForm()
           <Input />
         </Form.Item>
 
-        <Form.Item 
-            name={"lastName"} 
-            label="Last Name"
-            rules={[
-                {
-                  required: true,
-                },
-              ]}
+        <Form.Item
+          name={"lastName"}
+          label="Last Name"
+          rules={[
+            {
+              required: true,
+            },
+          ]}
         >
           <Input />
         </Form.Item>
@@ -137,15 +155,15 @@ const [form] = Form.useForm()
               required: true,
             },
             () => ({
-                validator(_, value) {
-                  if (!value || (value.length == 10 && value.match(/^[0-9]*$/))) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(
-                    new Error("Please input a valid phone number!")
-                  );
-                },
-              }),
+              validator(_, value) {
+                if (!value || (value.length == 10 && value.match(/^[0-9]*$/))) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(
+                  new Error("Please input a valid phone number!")
+                );
+              },
+            }),
           ]}
         >
           <Input onBlur={checkContactNumber} />
@@ -158,15 +176,17 @@ const [form] = Form.useForm()
               required: true,
             },
             () => ({
-                validator(_, value) {
-                  if (!value || (value.length >= 6 && !value.match(/\s/))) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(
-                    new Error("The username must contains 6 letter or more and no empty spaces are allowed!")
-                  );
-                },
-              }),
+              validator(_, value) {
+                if (!value || (value.length >= 6 && !value.match(/\s/))) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(
+                  new Error(
+                    "The username must contains 6 letter or more and no empty spaces are allowed!"
+                  )
+                );
+              },
+            }),
           ]}
         >
           <Input autoComplete="username" />
@@ -180,16 +200,18 @@ const [form] = Form.useForm()
               required: true,
             },
             () => ({
-                validator(_, value) {
-                    const passRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/
-                  if (!value || value.match(passRegex)) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(
-                    new Error("The password must have one numeric digit, one uppercase and one lowercase letter, and atleast 6 letter long !!!!")
-                  );
-                },
-              }),
+              validator(_, value) {
+                const passRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/;
+                if (!value || value.match(passRegex)) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(
+                  new Error(
+                    "The password must have one numeric digit, one uppercase and one lowercase letter, and atleast 6 letter long!"
+                  )
+                );
+              },
+            }),
           ]}
         >
           <Input.Password autoComplete="new-password" />
@@ -221,7 +243,7 @@ const [form] = Form.useForm()
           <Form.Item
             wrapperCol={{
               ...layout.wrapperCol,
-              offset: 2,
+              offset: 4,
             }}
           >
             <Button type="primary" htmlType="submit">
@@ -231,7 +253,7 @@ const [form] = Form.useForm()
           <Form.Item
             wrapperCol={{
               ...layout.wrapperCol,
-              offset: 2,
+              offset: 4,
             }}
           >
             <Button type="primary" onClick={switching}>
@@ -246,7 +268,7 @@ const [form] = Form.useForm()
     <Form
       name="basic"
       labelCol={{
-        span: 8,
+        span: 4,
       }}
       wrapperCol={{
         span: 16,
@@ -254,13 +276,12 @@ const [form] = Form.useForm()
       initialValues={{
         remember: true,
       }}
-      onFinish={onFinish}
-      onFinishFailed={onFinishFailed}
+      onFinish={onUserLoginFinish}
       autoComplete="off"
     >
       <Form.Item
-        label="Username"
-        name="username"
+        label="Email"
+        name="email"
         rules={[
           {
             required: true,
@@ -286,7 +307,7 @@ const [form] = Form.useForm()
 
       <Form.Item
         wrapperCol={{
-          offset: 8,
+          offset: 4,
           span: 16,
         }}
       >
@@ -297,7 +318,7 @@ const [form] = Form.useForm()
 
       <Form.Item
         wrapperCol={{
-          offset: 8,
+          offset: 4,
           span: 16,
         }}
       >
